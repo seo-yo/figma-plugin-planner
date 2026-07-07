@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Inter, -apple-system, sans-serif; font-size: 12px; margin: 0; padding: 12px; color: #111; }
+  h2 { font-size: 13px; margin: 0 0 6px; }
+  h3 { font-size: 12px; margin: 12px 0 6px; color: #555; }
+
+  .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 12px; }
+  .tab { padding: 8px 8px; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; font-size: 11px; flex: 1; text-align: center; white-space: nowrap; color: #888; }
+  .tab[data-pane="pc-purpose"] { --kind-color: #FF8400; }
+  .tab[data-pane="pc-landing"] { --kind-color: #7BCCFF; }
+  .tab[data-pane="mo-purpose"] { --kind-color: #E83A8C; }
+  .tab[data-pane="mo-landing"] { --kind-color: #4ABDAC; }
+  .tab.active { border-color: var(--kind-color); color: var(--kind-color); font-weight: 600; }
+  .tab-count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; font-size: 10px; font-weight: 600; color: #fff; background: #bbb; border-radius: 9px; text-align: center; }
+  .tab.active .tab-count { background: var(--kind-color); }
+
+  /* 카드 스타일 섹션 */
+  .card { background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .card-header { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 10px; }
+  .sec-num { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; background: #18a0fb; color: #fff; font-size: 10px; font-weight: 700; align-items: center; justify-content: center; flex-shrink: 0; }
+  .rows-header { display: grid; gap: 6px; padding: 4px 2px; font-size: 11px; color: #888; font-weight: 600; margin-bottom: 2px; }
+  .rows-header.fam-purpose { grid-template-columns: 32px 1fr 1fr 28px; }
+  .rows-header.fam-landing { grid-template-columns: 32px 1fr 1.5fr 28px 28px; }
+
+  /* SVG 아이콘 통일 */
+  .icon { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; flex-shrink: 0; }
+  button .icon { margin-right: 4px; }
+
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  .row { display: grid; gap: 8px; align-items: center; padding: 0; }
+  .row.purpose, .row.fam-purpose { grid-template-columns: 32px 1fr 1fr 28px; }
+  .row.landing, .row.fam-landing { grid-template-columns: 32px 1fr 1.5fr 28px 28px; }
+
+  .row-gap { position: relative; height: 6px; display: flex; align-items: center; justify-content: center; }
+  .row-gap::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: transparent; transition: background 0.15s; }
+  .row-gap:hover::before { background: #cce4f9; }
+  .btn-gap-insert { opacity: 0; transition: opacity 0.15s; padding: 1px 10px; font-size: 11px; line-height: 1.2; background: #fff; border: 1px solid #cce4f9; color: #18a0fb; border-radius: 12px; cursor: pointer; position: relative; z-index: 1; }
+  .row-gap:hover .btn-gap-insert { opacity: 1; }
+  .btn-gap-insert:hover { background: #e7f2ff; }
+  .btn-url, .btn-mark { padding: 4px; min-width: 24px; display: inline-flex; align-items: center; justify-content: center; color: #888; }
+  .btn-url:hover { background: #eef; color: #18a0fb; }
+  .btn-url .icon { margin: 0; width: 14px; height: 14px; }
+  .btn-mark:hover { background: #fff7d6; }
+  .btn-mark.armed { background: #ffd400; border-color: #c79b00; box-shadow: 0 0 0 2px rgba(255,212,0,0.5); animation: pulse 1s ease-in-out infinite; }
+  .rows-container { max-height: 380px; overflow-y: auto; padding: 8px 10px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; background: #fafafa; }
+
+  input, select, textarea { width: 100%; padding: 6px 9px; border: 1px solid #d0d0d0; border-radius: 4px; font-size: 12px; font-family: inherit; background: #fff; }
+  input:focus, textarea:focus { outline: none; border-color: #18a0fb; box-shadow: 0 0 0 2px rgba(24, 160, 251, 0.15); }
+  .no-badge { background: #f0f3ff; border: 1px solid #d8dffb; border-radius: 4px; text-align: center; padding: 4px 0; font-size: 11px; font-weight: 700; color: #2b48a1; cursor: pointer; user-select: none; }
+  .no-badge:hover { background: #e0e7ff; }
+  .no-badge.armed { background: #ffd400; border-color: #c79b00; color: #222; box-shadow: 0 0 0 2px rgba(255, 212, 0, 0.5); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 2px rgba(255,212,0,0.5);} 50% { box-shadow: 0 0 0 4px rgba(255,212,0,0.3);} }
+
+  button { padding: 6px 12px; border: 1px solid #d0d0d0; background: #fff; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: inherit; }
+  button:hover { background: #f6f6f6; }
+  button.primary { background: #18a0fb; color: #fff; border-color: #18a0fb; }
+  button.primary:hover { background: #0d8de1; }
+  button.active { background: #ffd400; border-color: #c79b00; color: #222; }
+  button.del { background: transparent; color: #888; border-color: transparent; padding: 4px; min-width: 24px; display: inline-flex; align-items: center; justify-content: center; }
+  button.del:hover { background: #ffeded; color: #c00; }
+  button.del .icon { margin: 0; width: 14px; height: 14px; }
+  button.accent { color: #18a0fb; border-color: #cce4f9; }
+  button.accent:hover { background: #e7f2ff; }
+  button.marker-action { background: #14b86f; color: #fff; border-color: #14b86f; font-weight: 600; }
+  button.marker-action:hover { background: #0fa45f; border-color: #0fa45f; }
+  button.marker-action.active { background: #ffb000; border-color: #c98700; color: #fff; }
+
+  .panel { display: grid; gap: 6px; margin-top: 10px; }
+  .panel-row { display: flex; gap: 6px; align-items: center; }
+  .panel-row input { min-width: 0; }
+  .panel-row input[type=number],
+  .panel-row input[type=text] { width: 56px; flex: 0 0 56px; }
+  .panel-row button { flex: 1; white-space: nowrap; min-width: 0; }
+  .panel-row button.fixed { flex: 0 0 auto; }
+  .panel-row .spacer { flex: 1; }
+  .panel-row.right { justify-content: flex-end; }
+  .panel-row.right button, .panel-row.right input { flex: 0 0 auto; }
+  .panel-section { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 -2px; }
+
+  .section-divider { border-top: 1px solid #eee; margin: 10px 0; }
+
+  .hint { color: #888; font-size: 11px; margin-bottom: 8px; line-height: 1.4; }
+  .hint b { color: #555; }
+
+  #log { margin-top: 10px; padding: 6px 8px; background: #f6f6f6; border-radius: 4px; font-size: 11px; color: #555; min-height: 18px; white-space: pre-wrap; }
+  #log:empty { display: none; }
+
+  /* 도움말 ? 버튼 (탭 행 우측) */
+  .tabs { align-items: center; }
+  #help-btn { width: 22px; height: 22px; border-radius: 50%; background: #f0f3ff; border: 1px solid #cce4f9; color: #18a0fb; font-weight: 700; padding: 0; font-size: 12px; line-height: 1; cursor: pointer; flex: 0 0 22px; margin: 0 4px 4px 4px; display: flex; align-items: center; justify-content: center; }
+  #help-btn:hover { background: #e0e7ff; }
+
+  /* 모달 */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 20px 12px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal-content { background: #fff; width: 100%; max-width: 440px; max-height: calc(100vh - 40px); overflow-y: auto; padding: 18px 20px; border-radius: 10px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+  .modal-close { position: absolute; top: 10px; right: 10px; background: transparent; border: 0; font-size: 20px; cursor: pointer; color: #888; padding: 4px 8px; line-height: 1; }
+  .modal-close:hover { color: #333; }
+  .modal-content h2 { font-size: 14px; margin: 0 0 12px; color: #111; }
+  .modal-content h3 { font-size: 12px; margin: 14px 0 6px; color: #18a0fb; font-weight: 700; }
+  .modal-content p, .modal-content li { font-size: 11px; color: #444; line-height: 1.5; margin: 4px 0; }
+  .modal-content ul { padding-left: 18px; margin: 4px 0; }
+  .modal-content code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-family: 'SF Mono', Menlo, monospace; }
+  .modal-content .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" data-pane="pc-purpose">PC 퍼블<span class="tab-count" id="count-pc-purpose">0</span></div>
+  <div class="tab" data-pane="pc-landing">PC URL<span class="tab-count" id="count-pc-landing">0</span></div>
+  <div class="tab" data-pane="mo-purpose">MO 퍼블<span class="tab-count" id="count-mo-purpose">0</span></div>
+  <div class="tab" data-pane="mo-landing">MO URL<span class="tab-count" id="count-mo-landing">0</span></div>
+  <button id="help-btn" title="도움말">?</button>
+</div>
+
+<div id="panes-host"></div>
+
+<div id="help-modal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="modal-close" id="help-close">×</button>
+    <h2>📘 Plan Doc Builder 사용법</h2>
+
+    <h3>① 빠른 시작</h3>
+    <ul>
+      <li>상단 탭 선택: <b>PC 퍼블 / PC URL / MO 퍼블 / MO URL</b></li>
+      <li>행에 content / url 입력 (또는 "빈 행 N개 생성"으로 빠르게 시작)</li>
+      <li><b>표 생성</b> 클릭 → Figma에 표 자동 생성</li>
+    </ul>
+
+    <h3>② 데이터 입력 팁</h3>
+    <ul>
+      <li>content에 여러 줄 붙여넣기 → 줄 단위로 자동 분배</li>
+      <li>퍼블 탭 content는 드롭다운 선택 가능 (슬라이드/페이드인/탭/영상 등)</li>
+      <li>URL은 풀 URL 붙여넣어도 <code>/product-detail/...</code> 형식으로 자동 정리</li>
+      <li>🔎 아이콘 → MLB Korea 검색 결과 새 창으로 열림</li>
+    </ul>
+
+    <h3>③ 행 추가/삭제</h3>
+    <ul>
+      <li>행 사이 호버 → 파란 <b>+</b> 클릭으로 그 위치에 삽입</li>
+      <li>휴지통 아이콘으로 행 삭제</li>
+      <li>행 변경 시 캔버스의 자유 마커도 자동 재라벨링</li>
+    </ul>
+
+    <h3>④ 표 ↔ Figma 양방향</h3>
+    <ul>
+      <li><b>표 생성</b>: 빌더 데이터 → Figma 표</li>
+      <li><b>가져오기</b>: Figma 표 → 빌더로 역동기화</li>
+      <li>탭 전환 시 자동으로 가져오기 실행</li>
+    </ul>
+
+    <h3>⑤ 마커 배치</h3>
+    <ul>
+      <li><b>▶ 마커 생성</b>: 1번부터 순서대로, Figma 요소 클릭마다 다음 라벨 배치</li>
+      <li><b>N부터 마커 생성</b>: 중간부터 시작 (예: C / 8)</li>
+      <li>셀 No 라벨을 직접 클릭 → 디자인 요소 클릭으로도 단일 배치 가능</li>
+      <li>이미 모두 배치되어 있으면 재생성 confirm</li>
+    </ul>
+
+    <h3>⑥ 마커 색상 (탭별 자동)</h3>
+    <ul>
+      <li><span class="swatch" style="background:#FF8400"></span>PC 퍼블 — 주황 <code>#FF8400</code></li>
+      <li><span class="swatch" style="background:#7BCCFF"></span>PC URL — 하늘 <code>#7BCCFF</code></li>
+      <li><span class="swatch" style="background:#E83A8C"></span>MO 퍼블 — 핑크 <code>#E83A8C</code></li>
+      <li><span class="swatch" style="background:#4ABDAC"></span>MO URL — 민트 <code>#4ABDAC</code></li>
+    </ul>
+
+    <h3>⑦ Figma 자동 배치 좌표</h3>
+    <ul>
+      <li>PC 표: <code>x=5096</code> / MO 표: <code>x=11500</code></li>
+      <li>퍼블: <code>y=453</code> / URL: <code>y=2917</code></li>
+    </ul>
+
+    <h3>⑧ 주의사항</h3>
+    <ul>
+      <li>표 생성 시 기존 행 모두 새 데이터로 교체됨</li>
+      <li>탭 전환 시 진행 중인 마커 배치는 자동 중단</li>
+      <li><b>마커 모두 삭제</b>는 자유 위치 마커만 (표 안 셀 No는 유지)</li>
+    </ul>
+  </div>
+</div>
+
+<datalist id="purpose-options">
+  <option value="슬라이드"></option>
+  <option value="페이드인 슬라이드"></option>
+  <option value="롤링 슬라이드"></option>
+  <option value="탭"></option>
+  <option value="스크롤 슬라이드"></option>
+  <option value="페이지네이션 슬라이드"></option>
+  <option value="영상"></option>
+</datalist>
+
+<div id="log"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const log = (m) => { $('log').textContent = m; };
+
+// ─── help modal ───
+$('help-btn').onclick = () => $('help-modal').classList.add('open');
+$('help-close').onclick = () => $('help-modal').classList.remove('open');
+$('help-modal').onclick = (e) => {
+  if (e.target.id === 'help-modal') $('help-modal').classList.remove('open');
+};
+
+// ─── tab ───
+function activateTab(t) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  const kind = t.dataset.pane;
+  $('pane-' + kind).classList.add('active');
+  // 탭 전환: arming 해제 + 순서배치 중단 + 플러그인에 active tab 알림
+  disarmBadge();
+  document.querySelectorAll('.panel-row button.active').forEach(b => {
+    b.classList.remove('active');
+    if (b.id && b.id.indexOf('seq-') === 0) {
+      const k = b.id.replace('seq-', '');
+      setSeqIdle(k);
+    }
+  });
+  send('stop-sequential', {});
+  send('set-active-tab', { kind });
+  send('sync-from-figma', { kind });
+}
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => activateTab(t);
+});
+
+// ─── kinds ───
+const KINDS = ['pc-purpose', 'pc-landing', 'mo-purpose', 'mo-landing'];
+const KIND_INFO = {
+  'pc-purpose': { family: 'purpose', label: 'PC 퍼블 요소', hint: 'A~F 등 PC 퍼블 단위. content=페이드인/앵커, url=앵커 대상' },
+  'pc-landing': { family: 'landing', label: 'PC URL',      hint: 'PC 랜딩 URL. content=상품명, url=/product-detail/...' },
+  'mo-purpose': { family: 'purpose', label: 'MO 퍼블 요소', hint: 'A~F 등 MO 퍼블 단위. content=페이드인/앵커, url=앵커 대상' },
+  'mo-landing': { family: 'landing', label: 'MO URL',      hint: 'MO 랜딩 URL. content=상품명, url=/product-detail/...' },
+};
+
+// SVG 아이콘
+const ICONS = {
+  trash: '<svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>',
+  upload: '<svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+  play: '<svg class="icon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none"/></svg>',
+  stop: '<svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor" stroke="none"/></svg>',
+  search: '<svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>',
+};
+
+function buildPanes() {
+  const host = $('panes-host');
+  KINDS.forEach((kind, i) => {
+    const pane = document.createElement('div');
+    pane.className = 'pane' + (i === 0 ? ' active' : '');
+    pane.id = 'pane-' + kind;
+    const info = KIND_INFO[kind];
+    const fam = info.family;
+    pane.innerHTML = ''
+      + '<div class="card">'
+      +   '<div class="card-header"><span class="sec-num">1</span>데이터 입력</div>'
+      +   '<div class="rows-header fam-' + fam + '">'
+      +     '<div>No</div><div>contents (텍스트)</div><div>url (링크)</div>'
+      +     (fam === 'landing' ? '<div></div>' : '')
+      +     '<div></div>'
+      +   '</div>'
+      +   '<div class="rows-container" id="' + kind + '-rows"></div>'
+      + '</div>'
+
+      + '<div class="card">'
+      +   '<div class="card-header"><span class="sec-num">2</span>행 관리</div>'
+      +   '<div class="panel-row">'
+      +     '<input type="number" id="bulk-count-' + kind + '" placeholder="N" min="1" max="200" value="5" />'
+      +     '<span style="color:#888;font-size:11px;">행</span>'
+      +     '<button id="add-n-' + kind + '">N행 추가</button>'
+      +     '<button class="primary" id="bulk-gen-' + kind + '">빈 행 N개 생성</button>'
+      +   '</div>'
+      + '</div>'
+
+      + '<div class="card">'
+      +   '<div class="card-header"><span class="sec-num">3</span>표 생성</div>'
+      +   '<div class="panel-row">'
+      +     '<button class="primary" id="gen-' + kind + '">표 생성</button>'
+      +     '<button id="sync-' + kind + '">' + ICONS.upload + ' 가져오기</button>'
+      +   '</div>'
+      + '</div>'
+
+      + '<div class="card">'
+      +   '<div class="card-header"><span class="sec-num">4</span>마커 배치</div>'
+      +   '<div class="panel-row">'
+      +     '<button class="marker-action" id="seq-' + kind + '">' + ICONS.play + ' 마커 생성</button>'
+      +     '<button id="delete-markers-' + kind + '" style="color:#c00;border-color:#fdd">' + ICONS.trash + ' 마커 모두 삭제</button>'
+      +   '</div>'
+      +   '<div class="panel-row right" style="margin-top:6px">'
+      +     '<input type="text" id="seq-start-' + kind + '" placeholder="' + (fam === 'landing' ? '8' : 'C') + '" />'
+      +     '<button id="seq-from-' + kind + '">N부터 마커 생성</button>'
+      +   '</div>'
+      + '</div>';
+    host.appendChild(pane);
+  });
+}
+buildPanes();
+
+// 초기 active tab 플러그인에 알림 (1초 후, plugin handler 준비된 후)
+setTimeout(() => {
+  parent.postMessage({ pluginMessage: { type: 'set-active-tab', payload: { kind: KINDS[0] } } }, '*');
+}, 100);
+
+// ─── auto No ───
+function autoNo(kind, idx) {
+  const fam = (KIND_INFO[kind] && KIND_INFO[kind].family) || 'purpose';
+  if (fam === 'landing') return String(idx + 1);
+  let n = idx, s = '';
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return s;
+}
+
+let _armedBadge = null; // {kind, label, el}
+
+function disarmBadge() {
+  if (_armedBadge) {
+    if (_armedBadge.el) _armedBadge.el.classList.remove('armed');
+    if (_armedBadge.markBtn) _armedBadge.markBtn.classList.remove('armed');
+  }
+  _armedBadge = null;
+  send('disarm-marker', {});
+}
+
+function reindex(kind) {
+  const rows = $(kind + '-rows').querySelectorAll('.row');
+  rows.forEach((r, i) => {
+    const badge = r.querySelector('.no-badge');
+    if (badge) {
+      const newLabel = autoNo(kind, i);
+      badge.textContent = newLabel;
+      // 재인덱싱 시 armed 상태 클리어
+      if (badge.classList.contains('armed')) {
+        badge.classList.remove('armed');
+        if (_armedBadge && _armedBadge.el === badge) _armedBadge = null;
+      }
+    }
+  });
+  const countEl = $('count-' + kind);
+  if (countEl) countEl.textContent = rows.length;
+}
+
+function armMarkerFor(kind, label, badgeEl, markBtnEl) {
+  if (_armedBadge && _armedBadge.el) {
+    _armedBadge.el.classList.remove('armed');
+    if (_armedBadge.markBtn) _armedBadge.markBtn.classList.remove('armed');
+  }
+  badgeEl.classList.add('armed');
+  if (markBtnEl) markBtnEl.classList.add('armed');
+  _armedBadge = { kind, label, el: badgeEl, markBtn: markBtnEl };
+  send('arm-marker', { kind, label });
+  log(`"${label}" 배치 대기 — Figma에서 위치 요소 클릭하세요.`);
+}
+
+function bindBadgeClick(badge, kind, markBtn) {
+  const toggle = () => {
+    const label = badge.textContent;
+    if (_armedBadge && _armedBadge.el === badge) {
+      disarmBadge();
+      log('마커 배치 해제');
+      return;
+    }
+    armMarkerFor(kind, label, badge, markBtn);
+  };
+  badge.addEventListener('click', toggle);
+  if (markBtn) markBtn.addEventListener('click', toggle);
+}
+
+// 상품명 → MLB Korea 검색 URL
+function makeSearchUrl(productName) {
+  return 'https://www.mlb-korea.com/search?sort=SOLD_COUNT&searchText='
+    + encodeURIComponent(productName) + '&gf=A';
+}
+
+// ─── row factory ───
+function makeRow(kind, defaults) {
+  defaults = defaults || {};
+  const fam = (KIND_INFO[kind] && KIND_INFO[kind].family) || 'purpose';
+  const row = document.createElement('div');
+  row.className = 'row fam-' + fam;
+
+  const cPH = fam === 'purpose' ? '퍼블리싱 요소' : '상품명';
+  const uPH = fam === 'purpose' ? '레퍼런스/디테일' : '/product-detail/...';
+  const cListAttr = fam === 'purpose' ? ' list="purpose-options"' : '';
+  let html = ''
+    + '<div class="no-badge">·</div>'
+    + '<input class="content"' + cListAttr + ' placeholder="' + cPH + '" value="' + (defaults.content || '') + '" />'
+    + '<input class="url" placeholder="' + uPH + '" value="' + (defaults.url || '') + '" />';
+  if (fam === 'landing') {
+    html += '<button class="btn-url" title="상품명으로 검색 URL 생성">' + ICONS.search + '</button>';
+  }
+  html += '<button class="del" title="삭제">' + ICONS.trash + '</button>';
+  row.innerHTML = html;
+
+
+  row.querySelector('.del').onclick = () => {
+    const container = $(kind + '-rows');
+    // 스냅샷 (삭제 전 라벨)
+    const snapshot = Array.from(container.querySelectorAll('.row')).map((r) => ({
+      row: r,
+      oldLabel: r.querySelector('.no-badge').textContent,
+    }));
+    const deletedLabel = row.querySelector('.no-badge').textContent;
+    // 행 + 인접 gap 제거
+    const sibling = row.nextElementSibling;
+    if (sibling && sibling.classList.contains('row-gap')) sibling.remove();
+    row.remove();
+    reindex(kind);
+    // 새 매핑 (살아남은 행들)
+    const updated = Array.from(container.querySelectorAll('.row'));
+    const mapping = {};
+    snapshot.forEach(({ row: r, oldLabel }) => {
+      const idx = updated.indexOf(r);
+      if (idx === -1) return; // 삭제된 행
+      const newLabel = autoNo(kind, idx);
+      if (oldLabel !== newLabel) mapping[oldLabel] = newLabel;
+    });
+    if (Object.keys(mapping).length || deletedLabel) {
+      send('relabel-markers', { kind, mapping, deletedLabel });
+    }
+  };
+  bindBadgeClick(
+    row.querySelector('.no-badge'),
+    kind,
+    row.querySelector('.btn-mark')
+  );
+
+  // 랜딩 URL 탭: 🔍 버튼 클릭 시 검색 URL 새 창으로 오픈
+  if (fam === 'landing') {
+    const contentInp = row.querySelector('.content');
+    const searchBtn = row.querySelector('.btn-url');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => {
+        const v = contentInp.value.trim();
+        if (!v) { log('상품명을 먼저 입력하세요.'); return; }
+        send('open-external', { url: makeSearchUrl(v) });
+      });
+    }
+  }
+
+  // 마지막 행에 입력하면 자동으로 새 행 추가
+  row.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const container = $(kind + '-rows');
+      const isLast = container.lastElementChild === row;
+      const hasValue = Array.from(row.querySelectorAll('input')).some(i => i.value.trim());
+      if (isLast && hasValue) addRow(kind);
+    });
+    // Enter → 다음 행 첫 input 포커스
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const container = $(kind + '-rows');
+        let next = row.nextElementSibling;
+        if (!next) {
+          addRow(kind);
+          next = container.lastElementChild;
+        }
+        const target = next.querySelector('input');
+        if (target) target.focus();
+      }
+    });
+  });
+
+  // 붙여넣기 다중 줄 처리 — 현재 행부터 순차적으로 채우고, 부족하면 끝에 추가
+  const contentInp = row.querySelector('.content');
+  contentInp.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (!text || text.indexOf('\n') === -1) return;
+    e.preventDefault();
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if (!lines.length) return;
+
+    const container = $(kind + '-rows');
+    const allRows = Array.from(container.querySelectorAll('.row'));
+    const startIdx = allRows.indexOf(row);
+
+    let li = 0;
+    // 1) 현재 행부터 기존 행을 순차적으로 채움
+    for (let i = startIdx; i < allRows.length && li < lines.length; i++, li++) {
+      const parts = lines[li].split('\t');
+      allRows[i].querySelector('.content').value = parts[0] || '';
+      if (parts.length > 1) allRows[i].querySelector('.url').value = parts[1] || '';
+    }
+    // 2) 남은 줄은 새 행으로 추가
+    for (; li < lines.length; li++) {
+      const parts = lines[li].split('\t');
+      addRow(kind, { content: parts[0] || '', url: parts[1] || '' });
+    }
+    reindex(kind);
+  });
+
+  return row;
+}
+
+function makeGap(kind) {
+  const gap = document.createElement('div');
+  gap.className = 'row-gap';
+  gap.innerHTML = '<button class="btn-gap-insert" title="여기에 행 추가">+</button>';
+  gap.querySelector('.btn-gap-insert').onclick = () => insertAtGap(kind, gap);
+  return gap;
+}
+
+function insertAtGap(kind, gap) {
+  const container = $(kind + '-rows');
+  const snapshot = Array.from(container.querySelectorAll('.row')).map((r) => ({
+    row: r,
+    oldLabel: r.querySelector('.no-badge').textContent,
+  }));
+  const newRow = makeRow(kind);
+  const newGap = makeGap(kind);
+  // gap.nextSibling = 이 gap 다음에 오는 row (또는 null=마지막)
+  const ref = gap.nextSibling;
+  container.insertBefore(newRow, ref);
+  container.insertBefore(newGap, ref);
+  reindex(kind);
+  // 매핑 산출
+  const updated = Array.from(container.querySelectorAll('.row'));
+  const mapping = {};
+  snapshot.forEach(({ row: r, oldLabel }) => {
+    const idx = updated.indexOf(r);
+    if (idx === -1) return;
+    const newLabel = autoNo(kind, idx);
+    if (oldLabel !== newLabel) mapping[oldLabel] = newLabel;
+  });
+  if (Object.keys(mapping).length) send('relabel-markers', { kind, mapping });
+}
+
+function addRow(kind, defaults) {
+  const container = $(kind + '-rows');
+  container.appendChild(makeRow(kind, defaults));
+  container.appendChild(makeGap(kind));
+  reindex(kind);
+}
+
+function addNRows(kind, n) {
+  for (let i = 0; i < n; i++) addRow(kind);
+}
+
+function clearRows(kind) {
+  $(kind + '-rows').innerHTML = '';
+  reindex(kind);
+}
+
+// 첫 번째 행 위에 삽입할 수 있도록 row 컨테이너 맨 앞에 gap 하나 추가
+function ensureTopGap(kind) {
+  const container = $(kind + '-rows');
+  const first = container.firstElementChild;
+  if (!first || first.classList.contains('row-gap')) return;
+  container.insertBefore(makeGap(kind), first);
+}
+
+// initial rows — 기본 5행 + 맨 위 gap (4 kinds)
+KINDS.forEach(k => {
+  for (let i = 0; i < 5; i++) addRow(k);
+  ensureTopGap(k);
+});
+
+function addN(kind) {
+  const n = parseInt($('bulk-count-' + kind).value, 10);
+  if (!n || n < 1) { log('개수를 입력하세요.'); return; }
+  addNRows(kind, n);
+}
+
+// 풀 URL → 도메인/쿼리 제거 후 경로만
+function normalizeUrl(url) {
+  if (!url) return url;
+  let cleaned = url.replace(/^https?:\/\/[^\/]+/i, ''); // 도메인 제거
+  cleaned = cleaned.split('?')[0].split('#')[0];        // 쿼리/해시 제거
+  return cleaned || url;
+}
+
+// ─── collect ───
+function collect(kind) {
+  const rows = [];
+  let idx = 0;
+  const fam = (KIND_INFO[kind] && KIND_INFO[kind].family) || 'purpose';
+  $(kind + '-rows').querySelectorAll('.row').forEach(r => {
+    const content = r.querySelector('.content').value.trim();
+    let url = r.querySelector('.url').value.trim();
+    if (fam === 'landing') url = normalizeUrl(url);
+    if (content || url) {
+      rows.push({ no: autoNo(kind, idx), content, url });
+      idx++;
+    }
+  });
+  return rows;
+}
+
+// ─── send to plugin ───
+function send(type, payload) {
+  parent.postMessage({ pluginMessage: { type, payload } }, '*');
+}
+
+function bulkGen(kind) {
+  const n = parseInt($('bulk-count-' + kind).value, 10);
+  if (!n || n < 1) { log('개수를 입력하세요.'); return; }
+  const rows = [];
+  for (let i = 0; i < n; i++) rows.push({ no: autoNo(kind, i), content: '', url: '' });
+  send('gen-table', { kind, rows });
+}
+
+// 모든 UI 행의 라벨 반환 (빈 행 포함) — 마커 배치는 행 채움 여부와 무관
+function collectLabels(kind) {
+  const labels = [];
+  const rows = $(kind + '-rows').querySelectorAll('.row');
+  rows.forEach((r, i) => labels.push(autoNo(kind, i)));
+  return labels;
+}
+
+function setSeqIdle(kind) {
+  const btn = $('seq-' + kind);
+  btn.classList.remove('active');
+  btn.innerHTML = ICONS.play + ' 마커 생성';
+}
+function setSeqActive(kind, placed, total) {
+  const btn = $('seq-' + kind);
+  btn.classList.add('active');
+  btn.innerHTML = ICONS.stop + ` 중단 (${placed}/${total})`;
+}
+
+function toggleSequential(kind) {
+  const btn = $('seq-' + kind);
+  if (btn.classList.contains('active')) {
+    setSeqIdle(kind);
+    send('stop-sequential', {});
+    return;
+  }
+  const labels = collectLabels(kind);
+  if (!labels.length) { log('행이 없습니다.'); return; }
+  setSeqActive(kind, 0, labels.length);
+  send('start-sequential', { kind, labels });
+}
+
+function sequentialFrom(kind) {
+  const btn = $('seq-' + kind);
+  if (btn.classList.contains('active')) {
+    setSeqIdle(kind);
+    send('stop-sequential', {});
+    return;
+  }
+  const startN = parseInt($('seq-start-' + kind).value, 10);
+  if (!startN || startN < 1) { log('시작 N을 입력하세요.'); return; }
+  const allLabels = collectLabels(kind);
+  const startIdx = startN - 1;
+  if (startIdx >= allLabels.length) { log(`${startN}번 행이 없습니다 (전체 ${allLabels.length}행).`); return; }
+  const queue = allLabels.slice(startIdx);
+  setSeqActive(kind, 0, queue.length);
+  send('start-sequential', { kind, labels: queue });
+}
+
+// 모든 kind에 핸들러 일괄 바인딩
+KINDS.forEach(k => {
+  $('add-n-' + k).onclick = () => addN(k);
+  $('gen-' + k).onclick = () => send('gen-table', { kind: k, rows: collect(k) });
+  $('bulk-gen-' + k).onclick = () => bulkGen(k);
+  $('sync-' + k).onclick = () => send('sync-from-figma', { kind: k });
+  $('seq-' + k).onclick = () => toggleSequential(k);
+  $('seq-from-' + k).onclick = () => sequentialFrom(k);
+  $('delete-markers-' + k).onclick = () => {
+    if (confirm(`${KIND_INFO[k].label}의 캔버스 마커를 모두 삭제할까요?`)) {
+      send('delete-all-markers', { kind: k });
+    }
+  };
+
+  // N 입력값 → 버튼 라벨 라이브 반영
+  const countInp = $('bulk-count-' + k);
+  const addNBtn = $('add-n-' + k);
+  const bulkBtn = $('bulk-gen-' + k);
+  const refreshCountBtns = () => {
+    const n = countInp.value || 'N';
+    addNBtn.textContent = `${n}행 추가`;
+    bulkBtn.textContent = `빈 행 ${n}개 생성`;
+  };
+  countInp.addEventListener('input', refreshCountBtns);
+  refreshCountBtns();
+
+  const seqInp = $('seq-start-' + k);
+  const seqFromBtn = $('seq-from-' + k);
+  const refreshSeqBtn = () => {
+    const n = seqInp.value || 'N';
+    seqFromBtn.textContent = `${n}부터 마커 생성`;
+  };
+  seqInp.addEventListener('input', refreshSeqBtn);
+  refreshSeqBtn();
+});
+
+// ─── from plugin ───
+window.onmessage = (e) => {
+  const msg = e.data.pluginMessage;
+  if (!msg) return;
+  if (msg.type === 'log') log(msg.text);
+  else if (msg.type === 'marker-placed') {
+    if (_armedBadge) {
+      if (_armedBadge.el) _armedBadge.el.classList.remove('armed');
+      if (_armedBadge.markBtn) _armedBadge.markBtn.classList.remove('armed');
+    }
+    _armedBadge = null;
+    log(`"${msg.label}" 배치 완료`);
+  }
+  else if (msg.type === 'sequential-progress') {
+    const btn = $('seq-' + msg.kind);
+    if (btn && btn.classList.contains('active')) {
+      setSeqActive(msg.kind, msg.placed, msg.total);
+    }
+  }
+  else if (msg.type === 'sequential-done') {
+    setSeqIdle(msg.kind);
+  }
+  else if (msg.type === 'confirm-recreate') {
+    const kind = msg.kind;
+    const ok = confirm(`${msg.labels.length}개 마커가 모두 이미 배치되어 있습니다.\n모두 삭제하고 처음부터 다시 배치할까요?`);
+    if (ok) {
+      send('start-sequential-force', { kind, labels: msg.labels });
+    } else {
+      setSeqIdle(kind);
+    }
+  }
+  else if (msg.type === 'sync-result') {
+    const kind = msg.kind;
+    if (!msg.rows || !msg.rows.length) {
+      // 표가 없거나 비어있으면 기존 UI 유지 (사용자 작업 보호)
+      log(`${kind} 표가 비어있거나 없습니다. (UI 유지)`);
+      return;
+    }
+    clearRows(kind);
+    msg.rows.forEach((r) => addRow(kind, { content: r.content || '', url: r.url || '' }));
+    ensureTopGap(kind);
+    log(`${kind}: ${msg.rows.length}행 가져옴`);
+  }
+};
+</script>
+</body>
+</html>
